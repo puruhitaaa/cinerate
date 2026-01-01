@@ -1,0 +1,53 @@
+{
+  "name": "cinerate",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.2.2",
+      "zod": "^4.1.13",
+      "typescript": "^5",
+      "@types/bun": "^1.3.4",
+      "elysia": "^1.3.21",
+      "@orpc/server": "^1.12.2",
+      "@orpc/openapi": "^1.12.2",
+      "@orpc/zod": "^1.12.2",
+      "better-auth": "^1.4.9",
+      "@orpc/tanstack-query": "^1.12.2",
+      "@orpc/client": "^1.12.2",
+      "@prisma/client": "^7.1.0",
+      "@better-auth/expo": "^1.4.9"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "check": "biome check --write .",
+    "ruler:apply": "bunx @intellectronica/ruler@latest apply --local-only",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:native": "turbo -F native dev",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
+    "db:push": "turbo -F @cinerate/db db:push",
+    "db:studio": "turbo -F @cinerate/db db:studio",
+    "db:generate": "turbo -F @cinerate/db db:generate",
+    "db:migrate": "turbo -F @cinerate/db db:migrate"
+  },
+  "dependencies": {
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@cinerate/env": "workspace:*"
+  },
+  "devDependencies": {
+    "turbo": "^2.6.3",
+    "@biomejs/biome": "^2.2.0",
+    "typescript": "catalog:",
+    "@types/bun": "catalog:",
+    "@cinerate/config": "workspace:*"
+  },
+  "packageManager": "bun@1.3.3"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@cinerate/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@orpc/server": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/zod": "catalog:",
+    "elysia": "catalog:",
+    "@prisma/client": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@cinerate/env": "workspace:*",
+    "@cinerate/auth": "workspace:*",
+    "@cinerate/db": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@cinerate/config": "workspace:*"
+  }
+}

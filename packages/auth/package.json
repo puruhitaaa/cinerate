@@ -1,0 +1,25 @@
+{
+  "name": "@cinerate/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@cinerate/config": "workspace:*"
+  },
+  "dependencies": {
+    "better-auth": "catalog:",
+    "@better-auth/expo": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@cinerate/env": "workspace:*",
+    "@cinerate/db": "workspace:*"
+  }
+}

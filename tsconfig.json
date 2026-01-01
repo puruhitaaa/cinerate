@@ -1,0 +1,3 @@
+{
+  "extends": "@cinerate/config/tsconfig.base.json"
+}
