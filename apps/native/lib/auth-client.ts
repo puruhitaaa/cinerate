@@ -1,8 +1,9 @@
-import { expoClient } from "@better-auth/expo/client";
-import { env } from "@cinerate/env/native";
-import { createAuthClient } from "better-auth/react";
-import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import { expoClient } from "@better-auth/expo/client"
+import { env } from "@cinerate/env/native"
+import { usernameClient } from "better-auth/client/plugins"
+import { createAuthClient } from "better-auth/react"
+import Constants from "expo-constants"
+import * as SecureStore from "expo-secure-store"
 
 export const authClient = createAuthClient({
   baseURL: env.EXPO_PUBLIC_SERVER_URL,
@@ -12,5 +13,6 @@ export const authClient = createAuthClient({
       storagePrefix: Constants.expoConfig?.scheme as string,
       storage: SecureStore,
     }),
+    usernameClient(),
   ],
-});
+})

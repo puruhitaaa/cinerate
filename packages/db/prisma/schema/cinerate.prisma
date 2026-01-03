@@ -1,0 +1,16 @@
+model Review {
+  id               String   @id @default(cuid())
+  rating           Int      @db.SmallInt // 1-5 stars
+  containsSpoilers Boolean
+  content          String?  @db.Text
+  tmdbMovieId      Int // TMDB movie ID (external API reference)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, tmdbMovieId]) // One review per user per movie
+  @@index([tmdbMovieId])
+  @@index([userId])
+  @@map("review")
+}

@@ -35,12 +35,16 @@
     "db:push": "turbo -F @cinerate/db db:push",
     "db:studio": "turbo -F @cinerate/db db:studio",
     "db:generate": "turbo -F @cinerate/db db:generate",
-    "db:migrate": "turbo -F @cinerate/db db:migrate"
+    "db:reset": "turbo -F @cinerate/db db:reset",
+    "db:migrate": "turbo -F @cinerate/db db:migrate",
+    "auth:generate": "turbo -F @cinerate/auth auth:generate"
   },
   "dependencies": {
+    "@cinerate/env": "workspace:*",
+    "@shopify/flash-list": "^2.2.0",
+    "@sinclair/typebox": "^0.34.46",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@cinerate/env": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "turbo": "^2.6.3",
