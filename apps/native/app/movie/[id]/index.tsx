@@ -1,20 +1,24 @@
 import { Ionicons } from "@expo/vector-icons"
 import { useQuery } from "@tanstack/react-query"
 import { router, useLocalSearchParams } from "expo-router"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import {
+  Dimensions,
   Image,
   ImageBackground,
+  Modal,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import YoutubePlayer from "react-native-youtube-iframe"
 
 import { orpc } from "@/utils/orpc"
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
+const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
 // Skeleton components
 function HeroSkeleton() {
@@ -53,6 +57,70 @@ function ReviewSkeleton() {
       </View>
       <View className='h-12 w-full rounded bg-[#25363d] animate-pulse' />
     </View>
+  )
+}
+
+// Trailer Modal Component
+function TrailerModal({
+  visible,
+  onClose,
+  videoId,
+}: {
+  visible: boolean
+  onClose: () => void
+  videoId: string | null
+}) {
+  const [playing, setPlaying] = useState(true)
+
+  const onStateChange = useCallback(
+    (state: string) => {
+      if (state === "ended") {
+        setPlaying(false)
+        onClose()
+      }
+    },
+    [onClose]
+  )
+
+  if (!videoId) return null
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType='fade'
+      onRequestClose={onClose}
+    >
+      {/* Dimmed overlay */}
+      <Pressable
+        onPress={onClose}
+        className='flex-1 bg-black/80 justify-center'
+      >
+        {/* Content container - prevent close when tapping video area */}
+        <Pressable onPress={(e) => e.stopPropagation()}>
+          {/* Close button */}
+          <View className='flex-row justify-end px-4 pb-3'>
+            <Pressable
+              onPress={onClose}
+              className='w-10 h-10 rounded-full bg-white/20 items-center justify-center'
+            >
+              <Ionicons name='close' size={24} color='white' />
+            </Pressable>
+          </View>
+
+          {/* YouTube Player */}
+          <View className='bg-black rounded-xl overflow-hidden mx-4'>
+            <YoutubePlayer
+              height={SCREEN_WIDTH * (9 / 16) - 32}
+              width={SCREEN_WIDTH - 32}
+              play={playing}
+              videoId={videoId}
+              onChangeState={onStateChange}
+            />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   )
 }
 
@@ -181,6 +249,9 @@ export default function MovieDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const movieId = Number(id)
 
+  const [trailerModalVisible, setTrailerModalVisible] = useState(false)
+  const [trailerVideoId, setTrailerVideoId] = useState<string | null>(null)
+
   const isValidMovieId = !Number.isNaN(movieId) && movieId > 0
 
   const movieQuery = useQuery({
@@ -193,11 +264,22 @@ export default function MovieDetailsScreen() {
     enabled: isValidMovieId,
   })
 
+  const videosQuery = useQuery({
+    ...orpc.tmdb.getMovieVideos.queryOptions({ input: { id: movieId } }),
+    enabled: isValidMovieId,
+  })
+
   const meQuery = useQuery(orpc.user.getMe.queryOptions())
 
   const movie = movieQuery.data
   const reviews = reviewsQuery.data
   const me = meQuery.data
+
+  // Find YouTube trailer from videos
+  const trailer = videosQuery.data?.results.find(
+    (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
+  )
+  const hasTrailer = !!trailer
 
   // Check if I reviewed
   const myReview =
@@ -212,6 +294,18 @@ export default function MovieDetailsScreen() {
 
   const handleEditReview = () => {
     router.push(`/movie/${movieId}/review`)
+  }
+
+  const handleWatchTrailer = () => {
+    if (trailer) {
+      setTrailerVideoId(trailer.key)
+      setTrailerModalVisible(true)
+    }
+  }
+
+  const handleCloseTrailer = () => {
+    setTrailerModalVisible(false)
+    setTrailerVideoId(null)
   }
 
   return (
@@ -283,6 +377,17 @@ export default function MovieDetailsScreen() {
                     <Text className='text-[#0db9f2] font-bold'>{rating}</Text>
                     <Text className='text-[#9cb2ba] text-xs'>/ 5</Text>
                   </View>
+                  {hasTrailer && (
+                    <Pressable
+                      onPress={handleWatchTrailer}
+                      className='flex-row items-center gap-1 bg-red-600/90 px-2 py-1 rounded-md active:opacity-80'
+                    >
+                      <Ionicons name='play' size={14} color='white' />
+                      <Text className='text-white font-semibold text-xs'>
+                        Trailer
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               </View>
             </View>
@@ -371,6 +476,13 @@ export default function MovieDetailsScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Trailer Modal */}
+      <TrailerModal
+        visible={trailerModalVisible}
+        onClose={handleCloseTrailer}
+        videoId={trailerVideoId}
+      />
     </View>
   )
 }

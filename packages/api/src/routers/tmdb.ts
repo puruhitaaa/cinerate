@@ -75,6 +75,24 @@ export interface TMDBMovieDetails extends TMDBMovie {
   }
 }
 
+export interface TMDBVideoResult {
+  iso_639_1: string
+  iso_3166_1: string
+  name: string
+  key: string // YouTube video ID
+  site: string // e.g., "YouTube"
+  size: number
+  type: string // e.g., "Trailer", "Teaser", "Featurette"
+  official: boolean
+  published_at: string
+  id: string
+}
+
+export interface TMDBVideosResponse {
+  id: number
+  results: TMDBVideoResult[]
+}
+
 export const tmdbRouter = {
   // Get trending movies
   trending: publicProcedure
@@ -130,5 +148,12 @@ export const tmdbRouter = {
       return await tmdbFetch<TMDBMovieDetails>(
         `/movie/${input.id}?append_to_response=credits`
       )
+    }),
+
+  // Get movie videos (trailers, teasers, etc.)
+  getMovieVideos: publicProcedure
+    .input(z.object({ id: z.number().int() }))
+    .handler(async ({ input }) => {
+      return await tmdbFetch<TMDBVideosResponse>(`/movie/${input.id}/videos`)
     }),
 }
