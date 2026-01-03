@@ -424,6 +424,52 @@ export default function MovieDetailsScreen() {
           </View>
         ) : null}
 
+        {/* Top Cast */}
+        {movie?.credits?.cast && movie.credits.cast.length > 0 && (
+          <View className='pt-6'>
+            <Text className='text-white text-lg font-bold mb-4 px-4'>
+              Top Cast
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}
+            >
+              {movie.credits.cast.slice(0, 10).map((cast) => (
+                <View key={cast.id} className='items-center w-20'>
+                  <View className='w-16 h-16 rounded-full bg-[#25363d] overflow-hidden mb-2'>
+                    {cast.profile_path ? (
+                      <Image
+                        source={{
+                          uri: `${TMDB_IMAGE_BASE}/w185${cast.profile_path}`,
+                        }}
+                        className='w-full h-full'
+                        resizeMode='cover'
+                      />
+                    ) : (
+                      <View className='w-full h-full items-center justify-center'>
+                        <Ionicons name='person' size={28} color='#64748b' />
+                      </View>
+                    )}
+                  </View>
+                  <Text
+                    className='text-white text-xs font-medium text-center'
+                    numberOfLines={2}
+                  >
+                    {cast.name}
+                  </Text>
+                  <Text
+                    className='text-[#64748b] text-xs text-center mt-0.5'
+                    numberOfLines={1}
+                  >
+                    {cast.character}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Community Reviews */}
         <View className='px-4 pt-8'>
           <View className='flex-row items-center justify-between mb-4'>

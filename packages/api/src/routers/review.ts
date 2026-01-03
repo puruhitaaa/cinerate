@@ -3,6 +3,7 @@ import { ORPCError } from "@orpc/server"
 import z from "zod"
 
 import { protectedProcedure, publicProcedure } from "../index"
+import { createCursorResponse, cursorPaginationSchema } from "../lib/pagination"
 
 export const reviewRouter = {
   // Get all reviews for a specific movie
@@ -25,23 +26,50 @@ export const reviewRouter = {
       })
     }),
 
-  // Get all reviews by a specific user
+  // Get all reviews by a specific user (with cursor pagination)
   getByUser: publicProcedure
-    .input(z.object({ userId: z.string() }))
-    .handler(async ({ input }) => {
-      return await prisma.review.findMany({
-        where: { userId: input.userId },
-        orderBy: { createdAt: "desc" },
+    .input(
+      z.object({
+        userId: z.string(),
+        cursor: z.string().optional(),
+        limit: z.number().int().min(1).max(50).default(10),
       })
+    )
+    .handler(async ({ input }) => {
+      const { userId, cursor, limit } = input
+
+      const reviews = await prisma.review.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
+        ...(cursor && {
+          cursor: { id: cursor },
+          skip: 1,
+        }),
+      })
+
+      return createCursorResponse(reviews, limit, (r) => r.id)
     }),
 
-  // Get current user's reviews
-  getMyReviews: protectedProcedure.handler(async ({ context }) => {
-    return await prisma.review.findMany({
-      where: { userId: context.session.user.id },
-      orderBy: { createdAt: "desc" },
-    })
-  }),
+  // Get current user's reviews with cursor-based pagination
+  getMyReviews: protectedProcedure
+    .input(cursorPaginationSchema)
+    .handler(async ({ input, context }) => {
+      const cursor = input?.cursor
+      const limit = input?.limit ?? 10
+
+      const reviews = await prisma.review.findMany({
+        where: { userId: context.session.user.id },
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
+        ...(cursor && {
+          cursor: { id: cursor },
+          skip: 1,
+        }),
+      })
+
+      return createCursorResponse(reviews, limit, (r) => r.id)
+    }),
 
   // Create a new review
   create: protectedProcedure

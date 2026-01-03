@@ -1,51 +1,34 @@
 import { Ionicons } from "@expo/vector-icons"
-import { useQuery } from "@tanstack/react-query"
-import { router } from "expo-router"
-import { Image, Pressable, ScrollView, Text, View } from "react-native"
+import { FlashList } from "@shopify/flash-list"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
+import { router, Stack } from "expo-router"
+import { useCallback } from "react"
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  Text,
+  View,
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 import { authClient } from "@/lib/auth-client"
-import { orpc, queryClient } from "@/utils/orpc"
+import { client, orpc, queryClient } from "@/utils/orpc"
 
-// Skeleton components
-function ProfileHeaderSkeleton() {
-  return (
-    <View className='items-center pt-6 pb-2 px-4'>
-      <View className='w-32 h-32 rounded-full bg-[#1c2a30] animate-pulse' />
-      <View className='mt-4 w-40 h-6 rounded bg-[#1c2a30] animate-pulse' />
-      <View className='mt-2 w-32 h-4 rounded bg-[#1c2a30] animate-pulse' />
-    </View>
-  )
+// --- Interfaces ---
+
+interface Review {
+  id: string
+  rating: number
+  content: string | null
+  tmdbMovieId: number
+  createdAt: Date | string
+  userId: string
 }
 
-function StatsRowSkeleton() {
-  return (
-    <View className='flex-row justify-center gap-3 px-4 py-4'>
-      {[1, 2, 3].map((i) => (
-        <View
-          key={i}
-          className='flex-1 h-20 rounded-xl bg-[#1c2a30] animate-pulse'
-        />
-      ))}
-    </View>
-  )
-}
+// --- Components ---
 
-function ReviewCardSkeleton() {
-  return (
-    <View className='flex-row gap-4 p-3 rounded-xl bg-[#18282d] border border-gray-800'>
-      <View className='w-20 aspect-[2/3] rounded-lg bg-[#25363d] animate-pulse' />
-      <View className='flex-1 py-1 gap-2'>
-        <View className='h-5 w-3/4 rounded bg-[#25363d] animate-pulse' />
-        <View className='h-3 w-1/2 rounded bg-[#25363d] animate-pulse' />
-        <View className='h-4 w-20 rounded bg-[#25363d] animate-pulse' />
-        <View className='h-10 w-full rounded bg-[#25363d] animate-pulse' />
-      </View>
-    </View>
-  )
-}
-
-// Stats card
 function StatCard({
   value,
   label,
@@ -56,7 +39,7 @@ function StatCard({
   isPrimary?: boolean
 }) {
   return (
-    <View className='flex-1 gap-1 rounded-xl bg-[#18282d] border border-gray-800 p-3 items-center'>
+    <View className='flex-1 items-center justify-center rounded-2xl bg-[#151f23] py-4 border border-[#1e2b30] shadow-sm'>
       <Text
         className={`text-2xl font-extrabold tracking-tight ${
           isPrimary ? "text-[#0db9f2]" : "text-white"
@@ -64,215 +47,300 @@ function StatCard({
       >
         {value}
       </Text>
-      <Text className='text-[#9cb2ba] text-xs font-semibold uppercase tracking-wide'>
+      <Text className='mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7a8c99]'>
         {label}
       </Text>
     </View>
   )
 }
 
-// Review card placeholder (we don't have movie data in reviews yet)
-interface Review {
-  id: string
-  rating: number
-  content: string | null
-  tmdbMovieId: number
-  createdAt: Date
+function LoadingReviewCard() {
+  return (
+    <View className='mb-4 flex-row overflow-hidden rounded-2xl bg-[#151f23] p-3 border border-[#1e2b30]'>
+      <View className='h-32 w-24 rounded-lg bg-[#1e2b30] animate-pulse' />
+      <View className='ml-4 flex-1 justify-center gap-3'>
+        <View className='h-5 w-3/4 rounded bg-[#1e2b30] animate-pulse' />
+        <View className='h-4 w-1/2 rounded bg-[#1e2b30] animate-pulse' />
+        <View className='h-4 w-full rounded bg-[#1e2b30] animate-pulse' />
+      </View>
+    </View>
+  )
 }
 
 function ReviewCard({ review }: { review: Review }) {
-  // Format the date
+  const { data: movie, isLoading } = useQuery(
+    orpc.tmdb.getMovie.queryOptions({ input: { id: review.tmdbMovieId } })
+  )
+
+  if (isLoading) return <LoadingReviewCard />
+
   const date = new Date(review.createdAt)
   const timeAgo = getTimeAgo(date)
+  const year = movie?.release_date?.split("-")[0] || "N/A"
+  const genre = movie?.genres?.[0]?.name || "Film"
+  const title = movie?.title || `Movie #${review.tmdbMovieId}`
+  const posterPath = movie?.poster_path
+  const reviewContent = review.content || "No review content..."
 
   return (
     <Pressable
-      className='flex-row gap-4 p-3 rounded-xl bg-[#18282d] border border-gray-800'
+      className='mb-4 flex-row overflow-hidden rounded-2xl bg-[#151f23] p-3 border border-[#1e2b30]'
       onPress={() => router.push(`/movie/${review.tmdbMovieId}`)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
     >
-      {/* Movie Poster placeholder */}
-      <View className='w-20 aspect-[2/3] rounded-lg bg-[#25363d] items-center justify-center'>
-        <Ionicons name='film-outline' size={24} color='#4b5563' />
+      <View className='h-32 w-24 rounded-lg bg-[#0f191d] shadow-sm overflow-hidden'>
+        {posterPath ? (
+          <Image
+            source={{
+              uri: `https://image.tmdb.org/t/p/w200${posterPath}`,
+            }}
+            className='h-full w-full'
+            resizeMode='cover'
+          />
+        ) : (
+          <View className='flex-1 items-center justify-center'>
+            <Ionicons name='film' size={24} color='#2d3b42' />
+          </View>
+        )}
       </View>
 
-      <View className='flex-1 py-1 gap-1'>
-        <View className='flex-row justify-between items-start'>
-          <View className='flex-1'>
-            <Text className='text-white text-base font-bold'>
-              Movie #{review.tmdbMovieId}
-            </Text>
-            <Text className='text-gray-500 text-xs font-medium mt-0.5'>
-              {timeAgo}
-            </Text>
-          </View>
+      <View className='ml-4 flex-1 py-1'>
+        <View className='flex-row items-center justify-between'>
+          <Text
+            className='flex-1 text-lg font-bold text-white leading-tight'
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+          <Text className='ml-2 text-xs font-medium text-[#566874]'>
+            {timeAgo}
+          </Text>
         </View>
 
-        {/* Stars */}
-        <View className='flex-row items-center gap-0.5 my-1'>
+        <Text className='mt-1 text-xs font-medium text-[#7a8c99]'>
+          {year} • {genre}
+        </Text>
+
+        <View className='mt-2 flex-row gap-0.5'>
           {[1, 2, 3, 4, 5].map((star) => (
             <Ionicons
               key={star}
               name='star'
-              size={16}
-              color={star <= review.rating ? "#0db9f2" : "#374151"}
+              size={14}
+              color={star <= review.rating ? "#0db9f2" : "#2a363d"}
             />
           ))}
         </View>
 
-        {review.content && (
-          <Text
-            className='text-[#9cb2ba] text-sm leading-snug'
-            numberOfLines={2}
-          >
-            {review.content}
-          </Text>
-        )}
+        <Text
+          className='mt-3 text-sm leading-5 text-[#8b9da9]'
+          numberOfLines={2}
+        >
+          {reviewContent}
+        </Text>
       </View>
     </Pressable>
   )
 }
+
+function ListFooter({ isLoading }: { isLoading: boolean }) {
+  if (!isLoading) return null
+  return (
+    <View className='py-6 items-center'>
+      <ActivityIndicator size='small' color='#0db9f2' />
+      <Text className='mt-2 text-xs text-[#566874]'>Loading more...</Text>
+    </View>
+  )
+}
+
+function EmptyState() {
+  return (
+    <View className='mt-8 items-center justify-center opacity-50'>
+      <Ionicons name='film-outline' size={48} color='#2d3b42' />
+      <Text className='mt-4 text-[#566874]'>No reviews yet</Text>
+    </View>
+  )
+}
+
+// --- Profile Header Component ---
+
+function ProfileHeader({
+  userName,
+  userImage,
+  reviewCount,
+  onLogout,
+}: {
+  userName: string | undefined
+  userImage: string | null | undefined
+  reviewCount: number
+  onLogout: () => void
+}) {
+  return (
+    <View>
+      <View className='flex-row items-center justify-between py-4'>
+        <View style={{ width: 24 }} />
+        <Text className='text-lg font-bold text-white'>Profile</Text>
+        <Pressable
+          onPress={onLogout}
+          className='rounded-full p-2 active:bg-[#1c2a30]'
+        >
+          <Ionicons name='log-out-outline' size={24} color='#7a8c99' />
+        </Pressable>
+      </View>
+
+      <View className='items-center pt-4 pb-8'>
+        <View className='relative mb-5'>
+          <View className='absolute -inset-1 rounded-full bg-[#0db9f2] opacity-30 shadow-lg' />
+
+          <View className='h-32 w-32 rounded-full border-[3px] border-[#0db9f2] p-1 bg-[#101e22]'>
+            <View className='h-full w-full overflow-hidden rounded-full bg-[#1c2a30]'>
+              {userImage ? (
+                <Image source={{ uri: userImage }} className='h-full w-full' />
+              ) : (
+                <View className='flex-1 items-center justify-center bg-[#1c2a30]'>
+                  <Ionicons name='person' size={48} color='#3d4f58' />
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <Text className='mb-1 text-2xl font-bold tracking-tight text-white'>
+          {userName}
+        </Text>
+        <Text className='text-sm font-medium text-[#7a8c99]'>
+          Film enthusiast & critic
+        </Text>
+      </View>
+
+      <View className='mb-10 flex-row gap-4'>
+        <StatCard value={reviewCount} label='Reviews' isPrimary />
+      </View>
+
+      <View className='mb-4 flex-row items-center'>
+        <Text className='text-xl font-bold text-white'>My Reviews</Text>
+      </View>
+    </View>
+  )
+}
+
+// --- Main Screen ---
+
+export default function ProfileScreen() {
+  const userQuery = useQuery(orpc.user.getMe.queryOptions())
+
+  const reviewsInfiniteQuery = useInfiniteQuery({
+    queryKey: ["myReviews"],
+    queryFn: async ({ pageParam }) => {
+      console.log("[Profile] Fetching reviews with cursor:", pageParam)
+      const result = await client.review.getMyReviews({
+        ...(pageParam ? { cursor: pageParam } : {}),
+        limit: 10,
+      })
+      console.log("[Profile] Fetched reviews:", result)
+      return result
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  })
+
+  const handleLogoutPress = useCallback(() => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          await authClient.signOut({
+            fetchOptions: {
+              onSuccess: () => {
+                queryClient.clear()
+                router.replace("/(auth)/login")
+              },
+            },
+          })
+        },
+      },
+    ])
+  }, [])
+
+  const handleEndReached = useCallback(() => {
+    if (
+      reviewsInfiniteQuery.hasNextPage &&
+      !reviewsInfiniteQuery.isFetchingNextPage
+    ) {
+      reviewsInfiniteQuery.fetchNextPage()
+    }
+  }, [reviewsInfiniteQuery])
+
+  const reviewCount = userQuery.data?._count?.reviews || 0
+  const userName = userQuery.data?.name
+  const userImage = userQuery.data?.image
+
+  // Flatten all pages into a single array of reviews
+  const allReviews =
+    reviewsInfiniteQuery.data?.pages
+      .flatMap((page) => page.items ?? [])
+      .filter(Boolean) ?? []
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#101e22" }}>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#101e22" },
+        }}
+      />
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "#101e22" }}
+        edges={["top"]}
+      >
+        <FlashList
+          data={allReviews}
+          keyExtractor={(item, index) => item?.id ?? `review-${index}`}
+          renderItem={({ item }) => <ReviewCard review={item} />}
+          // estimatedItemSize={160}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+          ListHeaderComponent={
+            <ProfileHeader
+              userName={userName}
+              userImage={userImage ?? null}
+              reviewCount={reviewCount}
+              onLogout={handleLogoutPress}
+            />
+          }
+          ListEmptyComponent={
+            reviewsInfiniteQuery.isPending ? (
+              <>
+                <LoadingReviewCard />
+                <LoadingReviewCard />
+              </>
+            ) : (
+              <EmptyState />
+            )
+          }
+          ListFooterComponent={
+            <ListFooter isLoading={reviewsInfiniteQuery.isFetchingNextPage} />
+          }
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+        />
+      </SafeAreaView>
+    </View>
+  )
+}
+
+// --- Helpers ---
 
 function getTimeAgo(date: Date): string {
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) {
-    return "Today"
-  }
-  if (diffDays === 1) {
-    return "1d ago"
-  }
-  if (diffDays < 7) {
-    return `${diffDays}d ago`
-  }
-  if (diffDays < 30) {
-    return `${Math.floor(diffDays / 7)}w ago`
-  }
+  if (diffDays === 0) return "Today"
+  if (diffDays === 1) return "1d ago"
+  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
   return `${Math.floor(diffDays / 30)}mo ago`
-}
-
-export default function ProfileScreen() {
-  // const { data: session } = authClient.useSession()
-  const userQuery = useQuery(orpc.user.getMe.queryOptions())
-  const reviewsQuery = useQuery(orpc.review.getMyReviews.queryOptions())
-
-  async function handleLogout() {
-    await authClient.signOut()
-    queryClient.clear()
-    router.replace("/(auth)/login")
-  }
-
-  const isPending = userQuery.isPending || reviewsQuery.isPending
-
-  return (
-    <SafeAreaView className='flex-1 bg-[#101e22]' edges={["bottom"]}>
-      <ScrollView
-        className='flex-1'
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        {/* Profile Header */}
-        {isPending ? (
-          <ProfileHeaderSkeleton />
-        ) : (
-          <View className='items-center pt-6 pb-2 px-4'>
-            {/* Avatar */}
-            <View className='relative mb-4'>
-              <View className='w-32 h-32 rounded-full border-4 border-[#0db9f2] overflow-hidden bg-[#1c2a30]'>
-                {userQuery.data?.image ? (
-                  <Image
-                    source={{ uri: userQuery.data.image }}
-                    className='w-full h-full'
-                    resizeMode='cover'
-                  />
-                ) : (
-                  <View className='w-full h-full items-center justify-center'>
-                    <Ionicons name='person' size={48} color='#0db9f2' />
-                  </View>
-                )}
-              </View>
-              {/* Edit button */}
-              <View className='absolute bottom-1 right-1 bg-[#25363d] p-1.5 rounded-full border border-gray-700'>
-                <Ionicons name='pencil' size={16} color='#0db9f2' />
-              </View>
-            </View>
-
-            {/* Name & Username */}
-            <Text className='text-white text-2xl font-bold tracking-tight text-center'>
-              {userQuery.data?.name || "CineRate User"}
-            </Text>
-            {userQuery.data?.username && (
-              <Text className='text-[#9cb2ba] text-sm font-medium mt-1'>
-                @{userQuery.data.username}
-              </Text>
-            )}
-          </View>
-        )}
-
-        {/* Stats Row */}
-        {isPending ? (
-          <StatsRowSkeleton />
-        ) : (
-          <View className='flex-row justify-center gap-3 px-4 py-4'>
-            <StatCard
-              value={userQuery.data?._count?.reviews || 0}
-              label='Reviews'
-              isPrimary
-            />
-            <StatCard value='-' label='Following' />
-            <StatCard value='-' label='Followers' />
-          </View>
-        )}
-
-        <View className='h-px bg-gray-800 my-2' />
-
-        {/* My Reviews Section */}
-        <View className='px-4 pt-4 pb-2 flex-row items-center justify-between'>
-          <Text className='text-white text-xl font-bold'>My Reviews</Text>
-          {reviewsQuery.data && reviewsQuery.data.length > 0 && (
-            <Text className='text-[#0db9f2] text-sm font-semibold'>
-              View all
-            </Text>
-          )}
-        </View>
-
-        {/* Reviews List */}
-        <View className='px-4 gap-4'>
-          {reviewsQuery.isPending ? (
-            <>
-              <ReviewCardSkeleton />
-              <ReviewCardSkeleton />
-              <ReviewCardSkeleton />
-            </>
-          ) : reviewsQuery.data && reviewsQuery.data.length > 0 ? (
-            reviewsQuery.data
-              .slice(0, 5)
-              .map((review) => <ReviewCard key={review.id} review={review} />)
-          ) : (
-            <View className='items-center py-12'>
-              <Ionicons name='film-outline' size={48} color='#1c2a30' />
-              <Text className='text-[#9cb2ba] text-base font-medium mt-4'>
-                No reviews yet
-              </Text>
-              <Text className='text-[#64748b] text-sm mt-1'>
-                Start rating movies to see them here
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Logout Button */}
-        <View className='px-4 mt-8'>
-          <Pressable
-            className='flex-row items-center justify-center gap-2 py-4 rounded-xl bg-red-500/10 border border-red-500/30'
-            onPress={handleLogout}
-          >
-            <Ionicons name='log-out-outline' size={20} color='#ef4444' />
-            <Text className='text-red-500 font-semibold'>Sign Out</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  )
 }
