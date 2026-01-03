@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { FlashList } from "@shopify/flash-list"
 import { useQuery } from "@tanstack/react-query"
 import { router } from "expo-router"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Image, Pressable, Text, TextInput, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
@@ -10,11 +10,11 @@ import { orpc } from "@/utils/orpc"
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
 
-// Debounce hook
+// Proper debounce hook
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value)
 
-  useState(() => {
+  useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value)
     }, delay)
@@ -22,39 +22,12 @@ function useDebounce<T>(value: T, delay: number): T {
     return () => {
       clearTimeout(handler)
     }
-  })
-
-  // Update immediately for now, we'll implement proper debounce
-  if (debouncedValue !== value) {
-    setDebouncedValue(value)
-  }
+  }, [value, delay])
 
   return debouncedValue
 }
 
-// Skeleton components
-function SearchResultSkeleton() {
-  return (
-    <View className='flex-row items-start gap-4 p-3 mx-4 my-2 rounded-xl bg-[#1A2C32]'>
-      <View className='w-[72px] h-[108px] rounded-lg bg-[#25363d] animate-pulse' />
-      <View className='flex-1 py-1 gap-2'>
-        <View className='h-5 w-3/4 rounded bg-[#25363d] animate-pulse' />
-        <View className='h-3 w-1/2 rounded bg-[#25363d] animate-pulse' />
-        <View className='h-6 w-16 rounded-md bg-[#25363d] animate-pulse mt-auto' />
-      </View>
-    </View>
-  )
-}
-
-function SearchSkeletonList() {
-  return (
-    <View>
-      {[1, 2, 3, 4].map((i) => (
-        <SearchResultSkeleton key={i} />
-      ))}
-    </View>
-  )
-}
+// --- Types ---
 
 interface Movie {
   id: number
@@ -95,6 +68,70 @@ function getGenreNames(genreIds: number[]): string {
     .join(", ")
 }
 
+// --- Components ---
+
+function SearchResultSkeleton() {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 12,
+        marginHorizontal: 16,
+        marginVertical: 6,
+        borderRadius: 16,
+        backgroundColor: "#1A2C32",
+      }}
+    >
+      <View
+        style={{
+          width: 70,
+          height: 100,
+          borderRadius: 12,
+          backgroundColor: "#25363d",
+        }}
+      />
+      <View style={{ flex: 1, marginLeft: 14, gap: 8 }}>
+        <View
+          style={{
+            height: 18,
+            width: "70%",
+            borderRadius: 4,
+            backgroundColor: "#25363d",
+          }}
+        />
+        <View
+          style={{
+            height: 14,
+            width: "50%",
+            borderRadius: 4,
+            backgroundColor: "#25363d",
+          }}
+        />
+        <View
+          style={{
+            height: 20,
+            width: 60,
+            borderRadius: 6,
+            backgroundColor: "#25363d",
+            marginTop: 4,
+          }}
+        />
+      </View>
+    </View>
+  )
+}
+
+function SearchSkeletonList() {
+  return (
+    <View>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <SearchResultSkeleton key={i} />
+      ))}
+    </View>
+  )
+}
+
 function SearchResultCard({ movie }: { movie: Movie }) {
   const year = movie.release_date?.split("-")[0] || ""
   const genres = getGenreNames(movie.genre_ids)
@@ -102,66 +139,125 @@ function SearchResultCard({ movie }: { movie: Movie }) {
 
   return (
     <Pressable
-      className='flex-row items-start gap-4 p-3 mx-4 my-2 rounded-xl bg-[#1A2C32] border border-white/5'
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 12,
+        marginHorizontal: 16,
+        marginVertical: 6,
+        borderRadius: 16,
+        backgroundColor: "#1A2C32",
+      }}
       onPress={() => router.push(`/movie/${movie.id}`)}
     >
       {/* Poster */}
-      <View className='w-[72px] h-[108px] rounded-lg overflow-hidden bg-[#25363d]'>
+      <View
+        style={{
+          width: 70,
+          height: 100,
+          borderRadius: 12,
+          overflow: "hidden",
+          backgroundColor: "#25363d",
+        }}
+      >
         {movie.poster_path ? (
           <Image
             source={{ uri: `${TMDB_IMAGE_BASE}/w185${movie.poster_path}` }}
-            className='w-full h-full'
+            style={{ width: "100%", height: "100%" }}
             resizeMode='cover'
           />
         ) : (
-          <View className='w-full h-full items-center justify-center'>
+          <View
+            style={{
+              width: "100%",
+              height: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <Ionicons name='film-outline' size={24} color='#4b5563' />
           </View>
         )}
       </View>
 
       {/* Content */}
-      <View className='flex-1 h-[108px] justify-between py-1'>
-        <View>
-          <View className='flex-row justify-between items-start'>
-            <Text
-              className='text-base font-bold text-white flex-1 pr-2'
-              numberOfLines={2}
-            >
-              {movie.title}
-            </Text>
-            <Pressable className='p-1'>
-              <Ionicons name='bookmark-outline' size={22} color='#9cb2ba' />
-            </Pressable>
-          </View>
-          <Text className='text-sm text-[#9cb2ba] font-medium mt-1'>
-            {year} • {genres}
-          </Text>
-        </View>
+      <View
+        style={{
+          flex: 1,
+          marginLeft: 14,
+          height: 100,
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "700",
+            color: "white",
+            marginBottom: 4,
+          }}
+          numberOfLines={1}
+        >
+          {movie.title}
+        </Text>
+
+        <Text
+          style={{
+            fontSize: 13,
+            color: "#9cb2ba",
+            fontWeight: "500",
+            marginBottom: 10,
+          }}
+        >
+          {year} • {genres}
+        </Text>
 
         {/* Rating */}
-        <View className='flex-row items-center gap-1.5 bg-[#0db9f2]/10 px-2 py-1 rounded-md self-start'>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Ionicons name='star' size={14} color='#0db9f2' />
-          <Text className='text-sm font-bold text-[#0db9f2]'>{rating}</Text>
-          <Text className='text-xs text-[#9cb2ba] ml-1'>/ 5</Text>
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "700",
+              color: "#0db9f2",
+            }}
+          >
+            {rating}
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: "#64748b",
+              marginLeft: 2,
+            }}
+          >
+            / 5
+          </Text>
         </View>
       </View>
+
+      {/* Bookmark Icon */}
+      {/* <Pressable
+        style={{
+          padding: 8,
+          marginLeft: 8,
+        }}
+        onPress={(e) => {
+          e.stopPropagation()
+          // TODO: Add to watchlist
+        }}
+      >
+        <Ionicons name='bookmark-outline' size={22} color='#64748b' />
+      </Pressable> */}
     </Pressable>
   )
 }
 
-// Category chips
-const CATEGORIES = [
-  "Sci-Fi Thriller",
-  "Space Opera",
-  "Futuristic",
-  "Action",
-  "Drama",
-]
+// --- Main Screen ---
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
-  const debouncedQuery = useDebounce(query, 300)
+  const debouncedQuery = useDebounce(query, 400)
 
   const searchQuery = useQuery({
     ...orpc.tmdb.search.queryOptions({
@@ -180,25 +276,43 @@ export default function SearchScreen() {
     searchQuery.data?.results && searchQuery.data.results.length > 0
 
   return (
-    <SafeAreaView className='flex-1 bg-[#101e22]'>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#101e22" }}>
       {/* Search Header */}
-      <View className='px-4 py-3 border-b border-white/5'>
-        <View className='flex-row items-center bg-[#1A2C32] rounded-lg overflow-hidden'>
-          <View className='pl-4'>
-            <Ionicons name='search' size={22} color='#9cb2ba' />
-          </View>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "#1A2C32",
+            borderRadius: 12,
+            paddingHorizontal: 14,
+          }}
+        >
+          <Ionicons name='search' size={20} color='#64748b' />
           <TextInput
-            className='flex-1 bg-transparent text-base text-white px-3 py-3 h-12'
-            placeholder='Search movies, actors...'
-            placeholderTextColor='#9cb2ba'
+            style={{
+              flex: 1,
+              fontSize: 16,
+              color: "white",
+              paddingHorizontal: 12,
+              paddingVertical: 14,
+              height: 50,
+            }}
+            placeholder='Sci-Fi'
+            placeholderTextColor='#64748b'
             value={query}
             onChangeText={setQuery}
             autoCapitalize='none'
             autoCorrect={false}
           />
           {query.length > 0 && (
-            <Pressable className='pr-4' onPress={handleClear}>
-              <Ionicons name='close' size={20} color='#9cb2ba' />
+            <Pressable onPress={handleClear} style={{ padding: 4 }}>
+              <Ionicons name='close' size={20} color='#64748b' />
             </Pressable>
           )}
         </View>
@@ -206,64 +320,126 @@ export default function SearchScreen() {
 
       {/* Content */}
       {!query ? (
-        // Empty state
-        <View className='flex-1 items-center justify-center px-8'>
+        // Empty state - minimal design
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 32,
+          }}
+        >
           <Ionicons name='search' size={64} color='#1A2C32' />
-          <Text className='text-[#9cb2ba] text-lg font-medium mt-4 text-center'>
-            Search for a movie...
+          <Text
+            style={{
+              color: "#9cb2ba",
+              fontSize: 18,
+              fontWeight: "600",
+              marginTop: 16,
+              textAlign: "center",
+            }}
+          >
+            Search for movies
           </Text>
-          <Text className='text-[#64748b] text-sm mt-2 text-center'>
+          <Text
+            style={{
+              color: "#64748b",
+              fontSize: 14,
+              marginTop: 8,
+              textAlign: "center",
+            }}
+          >
             Find your next favorite film to rate and review
           </Text>
         </View>
       ) : searchQuery.isPending ? (
         // Loading state
-        <SearchSkeletonList />
-      ) : hasResults ? (
-        // Results
-        <View className='flex-1'>
-          <View className='flex-row items-center justify-between px-4 py-3'>
-            <Text className='text-lg font-bold text-white'>Top Results</Text>
-            <Text className='text-xs font-medium text-[#0db9f2]'>
-              {searchQuery.data?.total_results} found
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "white" }}>
+              Top Results
             </Text>
           </View>
+          <SearchSkeletonList />
+        </View>
+      ) : hasResults ? (
+        // Results
+        <View style={{ flex: 1 }}>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "white" }}>
+              Top Results
+            </Text>
+            {/* <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/movies",
+                  params: { title: `"${query}" Results` },
+                })
+              }
+            >
+              <Text
+                style={{ fontSize: 14, fontWeight: "600", color: "#0db9f2" }}
+              >
+                See all
+              </Text>
+            </Pressable> */}
+          </View>
 
+          {/* Results List */}
           <FlashList
             data={searchQuery.data?.results}
             renderItem={({ item }) => <SearchResultCard movie={item} />}
-            // estimatedItemSize={132}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            ListFooterComponent={
-              <View className='pt-4 px-4 border-t border-white/5 mt-4'>
-                <Text className='text-sm font-semibold text-[#9cb2ba] uppercase tracking-wider mb-4'>
-                  Related Categories
-                </Text>
-                <View className='flex-row flex-wrap gap-2'>
-                  {CATEGORIES.map((category) => (
-                    <Pressable
-                      key={category}
-                      className='px-4 py-2 rounded-full bg-[#1A2C32] border border-white/10'
-                    >
-                      <Text className='text-sm font-medium text-white'>
-                        {category}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            }
+            contentContainerStyle={{ paddingBottom: 120 }}
           />
         </View>
       ) : (
         // No results
-        <View className='flex-1 items-center justify-center px-8'>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 32,
+          }}
+        >
           <Ionicons name='film-outline' size={64} color='#1A2C32' />
-          <Text className='text-[#9cb2ba] text-lg font-medium mt-4 text-center'>
+          <Text
+            style={{
+              color: "#9cb2ba",
+              fontSize: 18,
+              fontWeight: "600",
+              marginTop: 16,
+              textAlign: "center",
+            }}
+          >
             No movies found
           </Text>
-          <Text className='text-[#64748b] text-sm mt-2 text-center'>
+          <Text
+            style={{
+              color: "#64748b",
+              fontSize: 14,
+              marginTop: 8,
+              textAlign: "center",
+            }}
+          >
             Try a different search term
           </Text>
         </View>
