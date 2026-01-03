@@ -156,4 +156,61 @@ export const tmdbRouter = {
     .handler(async ({ input }) => {
       return await tmdbFetch<TMDBVideosResponse>(`/movie/${input.id}/videos`)
     }),
+
+  // Discover movies with pagination and filters (for infinite scroll)
+  discoverMovies: publicProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        sortBy: z
+          .enum([
+            "popularity.desc",
+            "popularity.asc",
+            "vote_average.desc",
+            "vote_average.asc",
+            "primary_release_date.desc",
+            "primary_release_date.asc",
+            "revenue.desc",
+            "title.asc",
+            "title.desc",
+          ])
+          .default("popularity.desc"),
+        withGenres: z.array(z.number()).optional(),
+        year: z.number().int().optional(),
+        voteAverageGte: z.number().min(0).max(10).optional(),
+        voteCountGte: z.number().int().optional(),
+      })
+    )
+    .handler(async ({ input }) => {
+      const params = new URLSearchParams()
+      params.append("page", input.page.toString())
+      params.append("sort_by", input.sortBy)
+      params.append("include_adult", "false")
+      params.append("include_video", "false")
+
+      if (input.withGenres && input.withGenres.length > 0) {
+        params.append("with_genres", input.withGenres.join(","))
+      }
+      if (input.year) {
+        params.append("primary_release_year", input.year.toString())
+      }
+      if (input.voteAverageGte !== undefined) {
+        params.append("vote_average.gte", input.voteAverageGte.toString())
+      }
+      if (input.voteCountGte !== undefined) {
+        // Ensure a minimum vote count to filter out obscure movies with high ratings but few votes
+        params.append("vote_count.gte", input.voteCountGte.toString())
+      }
+
+      return await tmdbFetch<TMDBMovieListResponse>(
+        `/discover/movie?${params.toString()}`
+      )
+    }),
+
+  // Get available genres for filtering
+  getGenres: publicProcedure.handler(async () => {
+    return await tmdbFetch<{ genres: { id: number; name: string }[] }>(
+      "/genre/movie/list"
+    )
+  }),
 }

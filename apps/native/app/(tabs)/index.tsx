@@ -190,15 +190,24 @@ export default function HomeScreen() {
                   >
                     Trending Now
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: "#0db9f2",
-                      fontWeight: "600",
-                    }}
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/movies",
+                        params: { title: "Discover Movies" },
+                      })
+                    }
                   >
-                    See All
-                  </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: "#0db9f2",
+                        fontWeight: "600",
+                      }}
+                    >
+                      View All
+                    </Text>
+                  </Pressable>
                 </View>
 
                 <FlatList

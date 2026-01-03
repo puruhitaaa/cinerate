@@ -31,6 +31,13 @@ function StackLayout() {
           animation: "slide_from_right",
         }}
       />
+      <Stack.Screen
+        name='movies'
+        options={{
+          headerShown: false,
+          animation: "slide_from_right",
+        }}
+      />
     </Stack>
   )
 }
